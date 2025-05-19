@@ -5,7 +5,7 @@
 //! The names of macros in this crate are formed by
 //! removing the letter `r` from their `std` counterparts.
 //!
-//! Index: [**examples**](#examples) • 
+//! Index: [**examples**](#examples) •
 //! [**syntax**](#syntax-overview):
 //! [`"string"`](#string-literals),
 //! [`()`, `[]`](#expressions-in--and--brackets),
@@ -13,8 +13,8 @@
 //! [`for`](#for-loops),
 //! [`if`](#if-and-if-let),
 //! [`match`](#match),
-//! [`=`](#debugging-shorthand) • 
-//! [**troubleshooting**](#troubleshooting) • 
+//! [`=`](#debugging-shorthand) •
+//! [**troubleshooting**](#troubleshooting) •
 //! [**macros**](#macros)
 //!
 //! # Examples
@@ -273,26 +273,28 @@ use std::fmt;
 
 #[doc(hidden)]
 pub struct DisplayOnce<F> {
-    closure: std::cell::Cell<Option<F>>
+    closure: std::cell::Cell<Option<F>>,
 }
 
 impl<F> DisplayOnce<F>
 where
-    F: FnOnce(&mut fmt::Formatter) -> fmt::Result
+    F: FnOnce(&mut fmt::Formatter) -> fmt::Result,
 {
     pub fn new(f: F) -> Self {
-        Self { closure: std::cell::Cell::new(Some(f)) }
+        Self {
+            closure: std::cell::Cell::new(Some(f)),
+        }
     }
 }
 
 impl<F> fmt::Display for DisplayOnce<F>
 where
-    F: FnOnce(&mut fmt::Formatter) -> fmt::Result
+    F: FnOnce(&mut fmt::Formatter) -> fmt::Result,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.closure.replace(None).take() {
             Some(closure) => closure(f),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 }
@@ -307,22 +309,22 @@ pub struct DisplayFn<F>(F);
 
 impl<F> DisplayFn<F>
 where
-    F: Fn(&mut fmt::Formatter) -> fmt::Result
+    F: Fn(&mut fmt::Formatter) -> fmt::Result,
 {
     /// Creates an object which `Display::fmt` impl will call this closure.
-    pub fn new(f: F) -> Self { Self(f) }
+    pub fn new(f: F) -> Self {
+        Self(f)
+    }
 }
-
 
 impl<F> fmt::Display for DisplayFn<F>
 where
-    F: Fn(&mut fmt::Formatter) -> fmt::Result
+    F: Fn(&mut fmt::Formatter) -> fmt::Result,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (self.0)(f)
     }
 }
-
 
 /// Writes to a specified writer. Analogous to `write!`.
 ///
@@ -356,6 +358,7 @@ where
 #[macro_export]
 macro_rules! wite {
     // single tt rules ---------------------------------------------------------
+    (@one $w:ident, ; ) => { writeln!($w) };
     (@one $w:ident, ($e:expr)) => { ::std::fmt::Display::fmt(&$e, $w) };
     (@one $w:ident, [$e:expr]) => { ::std::fmt::Debug::fmt(&$e, $w) };
     (@one $w:ident, {$e:tt : $($fmt:tt)*}) => {
@@ -493,6 +496,15 @@ macro_rules! wite {
     };
     (@rec $w:ident, if $($tt:tt)* ) => {
         $crate::wite!(@expr $w { if } () $($tt)*)
+    };
+
+    // let
+    (@rec $w:ident,
+        let $pat:pat = $expr:expr;
+        $($rest:tt)*
+    ) => {
+        let $pat = $expr;
+        $crate::wite!(@rec $w, $($rest)*);
     };
 
     // equal-sign debugging
@@ -674,7 +686,7 @@ macro_rules! epint {
 
 /// Same as `epint`
 #[macro_export]
-#[deprecated(since="0.2.1", note="use `epint` instead")]
+#[deprecated(since = "0.2.1", note = "use `epint` instead")]
 macro_rules! perr { ($($arg:tt)*) => { $crate::epint!($($arg)*) } }
 
 /// Prints to stderr, with an appended newline. Analogous to `eprintln!`.
@@ -697,7 +709,7 @@ macro_rules! epintln {
 
 /// Same as `epintln`
 #[macro_export]
-#[deprecated(since="0.2.1", note="use `epint` instead")]
+#[deprecated(since = "0.2.1", note = "use `epint` instead")]
 macro_rules! perrln { ($($arg:tt)*) => { $crate::epintln!($($arg)*) } }
 
 /// Creates a formatted string. Analogous to `format!`.
@@ -753,6 +765,14 @@ macro_rules! fomat {
     };
     (@cap ($($lm:tt)*) match $($tt:tt)*) => {
         $crate::fomat!(@cap-ignore ($($lm)*) $($tt)*)
+    };
+
+    (@cap ($($lm:tt)*) ; $($rest:tt)*) => {
+        $crate::fomat!(@cap ($($lm)*) $($rest)*)
+    };
+
+    (@cap ($($lm:tt)*) let $p:pat = $e:expr ; $($rest:tt)*) => {
+        $crate::fomat!(@cap ($($lm)*) $($rest)*)
     };
 
     // When there's any unconditional string interpolation,
@@ -860,7 +880,7 @@ fn empty() {
 
 #[test]
 fn debug() {
-    let v = [1,2,3];
+    let v = [1, 2, 3];
     assert_eq!(fomat!([v] "."), "[1, 2, 3].");
 }
 
@@ -883,8 +903,8 @@ fn test_if() {
 
 #[test]
 fn format() {
-    assert_eq!( fomat!({5:02}), "05" );
-    assert_eq!( fomat!({"{}-{}", 4, 2}), "4-2" );
+    assert_eq!(fomat!({5:02}), "05");
+    assert_eq!(fomat!({"{}-{}", 4, 2}), "4-2");
 }
 
 #[test]
@@ -912,7 +932,7 @@ fn test_match() {
 #[test]
 fn capacity() {
     assert_eq!(fomat!("Hello, " "world!").capacity(), 13);
-    assert_eq!(fomat!("Hello, "[40+2]).capacity(), 14);
+    assert_eq!(fomat!("Hello, "[40 + 2]).capacity(), 14);
     let s = fomat!(
         "Hello"
         for x in [1][1..].iter() { (x) "a" }
@@ -960,9 +980,9 @@ fn depth() {
 
 #[test]
 fn non_static_writer() {
-    use std::io::Write;
-    use std::io::Result;
     use std::fmt::Arguments;
+    use std::io::Result;
+    use std::io::Write;
 
     struct Prepender<'a, T: Write> {
         prefix: &'a str,
@@ -986,15 +1006,23 @@ fn non_static_writer() {
 
     let mut buf = vec![];
     witeln!(
-        Prepender { prefix: &"foo ".to_owned(), writer: &mut buf },
-        (2+2)
-    ).unwrap();
+        Prepender {
+            prefix: &"foo ".to_owned(),
+            writer: &mut buf
+        },
+        (2 + 2)
+    )
+    .unwrap();
     assert_eq!(buf, "foo 4\n".as_bytes());
 }
 
 #[test]
 fn no_semicolon() {
-    if true { pint!("foo") } else { epint!("bar") }
+    if true {
+        pint!("foo")
+    } else {
+        epint!("bar")
+    }
     pintln!("foo" "bar")
 }
 
@@ -1003,7 +1031,9 @@ fn move_and_borrow() {
     // Test if fomat! arguments can move some and borrow other variables.
     let iter = vec![1, 2, 3].into_iter();
     let borrow_me = vec![1, 2, 3];
-    let s = fomat!(for x in iter { (x) } (borrow_me.len()));
+    let s = fomat!(for x in iter {
+        (x)
+    }(borrow_me.len()));
     assert_eq!(s, "1233");
     assert_eq!(borrow_me, [1, 2, 3]);
 }
